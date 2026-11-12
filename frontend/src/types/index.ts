@@ -112,7 +112,7 @@ export interface Metadata {
   numeric_features: string[];
   categorical_features: string[];
   categories: Record<string, string[]>;
-  ranges: Record<string, { min: number; max: number }>;
+  ranges: Record<string, [number, number]>;
   bounds: {
     center_latitude: number;
     center_longitude: number;

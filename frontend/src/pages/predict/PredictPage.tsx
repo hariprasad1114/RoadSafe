@@ -23,7 +23,7 @@ import { ProbabilityBars } from "@/components/charts/ProbabilityBars";
 import { RiskGauge } from "@/components/charts/RiskGauge";
 import { cn, formatNumber, formatPercent } from "@/lib/utils";
 
-const TIME_OPTIONS = ["Morning", "Afternoon", "Evening", "Night", "Other"];
+const TIME_OPTIONS = ["Morning", "Afternoon", "Evening", "Night"];
 const DAY_OPTIONS = [
   "Monday",
   "Tuesday",
@@ -34,10 +34,10 @@ const DAY_OPTIONS = [
   "Sunday",
 ];
 const WEATHER_OPTIONS = ["Clear", "Cloudy", "Rainy", "Foggy", "Snowy", "Other"];
-const ROAD_CONDITION_OPTIONS = ["Dry", "Wet", "Snowy/Icy", "Flooded"];
+const ROAD_CONDITION_OPTIONS = ["Dry", "Wet", "Snowy/Icy", "Flooded", "Other"];
 const ROAD_TYPE_OPTIONS = ["Urban Road", "Highway", "Rural Road", "Intersection"];
 const VEHICLE_OPTIONS = ["Car", "Two-Wheeler", "Truck", "Bus", "Other"];
-const LIGHTING_OPTIONS = ["Good", "Moderate", "Poor", "Dark"];
+const LIGHTING_OPTIONS = ["Good", "Moderate", "Poor", "No Lighting", "Other"];
 
 export function PredictPage() {
   useDocumentTitle("Predict severity");
@@ -47,6 +47,15 @@ export function PredictPage() {
   const { data: metadata } = useApi<Metadata>("/api/v1/metadata");
   const defaults = metadata?.defaults;
   const categories = metadata?.categories;
+  const bounds = metadata?.bounds;
+  const mapBounds = bounds
+    ? {
+        minLatitude: bounds.min_latitude,
+        maxLatitude: bounds.max_latitude,
+        minLongitude: bounds.min_longitude,
+        maxLongitude: bounds.max_longitude,
+      }
+    : undefined;
 
   const [latitude, setLatitude] = useState(51.5074);
   const [longitude, setLongitude] = useState(-0.1278);
@@ -76,6 +85,22 @@ export function PredictPage() {
     setLighting(defaults.lighting_condition);
   }, [defaults]);
 
+  useEffect(() => {
+    if (!categories) return;
+    const pick = (key: string, fallback: string) => (current: string) => {
+      const allowed = categories[key] || [];
+      if (!allowed.length || allowed.includes(current)) return current;
+      return allowed.includes(fallback) ? fallback : allowed[0];
+    };
+    setRoadType(pick("road_type", "Urban Road"));
+    setWeather(pick("weather", "Clear"));
+    setRoadCondition(pick("road_condition", "Dry"));
+    setTimeOfDay(pick("time_of_day", "Afternoon"));
+    setDayOfWeek(pick("day_of_week", "Friday"));
+    setVehicleType(pick("vehicle_type", "Car"));
+    setLighting(pick("lighting_condition", "Good"));
+  }, [categories]);
+
   const roadTypes = categories?.road_type || ROAD_TYPE_OPTIONS;
   const weathers = categories?.weather || WEATHER_OPTIONS;
   const roadConditions = categories?.road_condition || ROAD_CONDITION_OPTIONS;
@@ -86,6 +111,24 @@ export function PredictPage() {
 
   async function handleSubmit() {
     setError(null);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setError("Enter valid numeric coordinates before predicting.");
+      return;
+    }
+    if (
+      bounds &&
+      (latitude < bounds.min_latitude ||
+        latitude > bounds.max_latitude ||
+        longitude < bounds.min_longitude ||
+        longitude > bounds.max_longitude)
+    ) {
+      setError(
+        `Location is outside the UK area covered by the dataset. Latitude must be between ` +
+          `${bounds.min_latitude.toFixed(4)} and ${bounds.max_latitude.toFixed(4)}, and ` +
+          `longitude between ${bounds.min_longitude.toFixed(4)} and ${bounds.max_longitude.toFixed(4)}.`,
+      );
+      return;
+    }
     setSubmitting(true);
     try {
       const payload: PredictionRequest = {
@@ -163,6 +206,7 @@ export function PredictPage() {
                   setLongitude(lng);
                 }}
                 height={320}
+                bounds={mapBounds}
               />
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -171,6 +215,8 @@ export function PredictPage() {
                     id="latitude"
                     type="number"
                     step="0.00001"
+                    min={bounds?.min_latitude ?? -90}
+                    max={bounds?.max_latitude ?? 90}
                     value={latitude}
                     onChange={(event) => setLatitude(Number(event.target.value))}
                   />
@@ -180,11 +226,22 @@ export function PredictPage() {
                     id="longitude"
                     type="number"
                     step="0.00001"
+                    min={bounds?.min_longitude ?? -180}
+                    max={bounds?.max_longitude ?? 180}
                     value={longitude}
                     onChange={(event) => setLongitude(Number(event.target.value))}
                   />
                 </FormField>
               </div>
+
+              {bounds ? (
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  Dataset coverage: {bounds.min_latitude.toFixed(2)}° to{" "}
+                  {bounds.max_latitude.toFixed(2)}° latitude,{" "}
+                  {bounds.min_longitude.toFixed(2)}° to{" "}
+                  {bounds.max_longitude.toFixed(2)}° longitude.
+                </p>
+              ) : null}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Road type" htmlFor="road-type" required>

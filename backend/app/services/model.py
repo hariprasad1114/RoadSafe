@@ -45,12 +45,24 @@ RISK_LEVELS = [
 
 
 class PredictionValidationError(ValueError):
-    def __init__(self, field: str, value, allowed: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        field: str,
+        value,
+        allowed: list[str] | None = None,
+        bounds: tuple[float, float] | None = None,
+    ) -> None:
         self.field = field
         self.value = value
         self.allowed = allowed
+        self.bounds = bounds
         if allowed:
             message = f"Invalid value for {field}: {value!r}. Allowed values: {', '.join(allowed)}"
+        elif bounds is not None:
+            message = (
+                f"Invalid value for {field}: {value!r}. Must be between "
+                f"{bounds[0]} and {bounds[1]} (the UK area covered by the dataset)."
+            )
         else:
             message = f"Invalid value for {field}: {value!r}"
         super().__init__(message)
@@ -183,10 +195,18 @@ class ModelService:
         bounds = metadata.get("bounds", {})
         latitude = float(data["latitude"])
         longitude = float(data["longitude"])
-        if not (bounds.get("min_latitude", -90) <= latitude <= bounds.get("max_latitude", 90)):
-            raise PredictionValidationError("latitude", latitude)
-        if not (bounds.get("min_longitude", -180) <= longitude <= bounds.get("max_longitude", 180)):
-            raise PredictionValidationError("longitude", longitude)
+        latitude_bounds = (
+            float(bounds.get("min_latitude", -90)),
+            float(bounds.get("max_latitude", 90)),
+        )
+        longitude_bounds = (
+            float(bounds.get("min_longitude", -180)),
+            float(bounds.get("max_longitude", 180)),
+        )
+        if not (latitude_bounds[0] <= latitude <= latitude_bounds[1]):
+            raise PredictionValidationError("latitude", latitude, bounds=latitude_bounds)
+        if not (longitude_bounds[0] <= longitude <= longitude_bounds[1]):
+            raise PredictionValidationError("longitude", longitude, bounds=longitude_bounds)
         speed = float(data["speed_limit"])
         if speed < 0 or speed > 100:
             raise PredictionValidationError("speed_limit", speed)

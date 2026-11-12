@@ -28,7 +28,13 @@ def predict(
     except PredictionValidationError as exc:
         raise HTTPException(
             status_code=422,
-            detail={"error": "VALIDATION_ERROR", "message": str(exc), "field": exc.field, "allowed": exc.allowed},
+            detail={
+                "error": "VALIDATION_ERROR",
+                "message": str(exc),
+                "field": exc.field,
+                "allowed": exc.allowed,
+                "bounds": exc.bounds,
+            },
         ) from exc
 
     background_tasks.add_task(

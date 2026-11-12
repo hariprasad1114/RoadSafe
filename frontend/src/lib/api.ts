@@ -46,6 +46,16 @@ function extractDetail(payload: unknown): { message: string; detail: unknown } {
   if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail: unknown }).detail;
     if (typeof detail === "string") return { message: detail, detail };
+    if (Array.isArray(detail)) {
+      const first = detail[0] as Record<string, unknown> | undefined;
+      const location = Array.isArray(first?.loc)
+        ? first.loc.filter((part) => part !== "body").join(".")
+        : "";
+      const reason =
+        (typeof first?.msg === "string" && first.msg) ||
+        "One or more fields have invalid values.";
+      return { message: location ? `${location}: ${reason}` : reason, detail };
+    }
     if (detail && typeof detail === "object") {
       const record = detail as Record<string, unknown>;
       const message =
