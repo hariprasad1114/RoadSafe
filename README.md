@@ -123,11 +123,21 @@ $env:PYTHONPATH='.'
 
 ## Deployment
 
-- Frontend: Vercel (`frontend/vercel.json`)
-- Backend: Render (`backend/render.yaml`) or Docker (`backend/Dockerfile`)
+- Frontend: Vercel (`vercel.json` for repo-root deployments, `frontend/vercel.json` when the root directory is `frontend`)
+- Backend: InsForge compute (`npx -y @insforge/cli compute deploy backend --name roadsafe-api --port 8000 --memory 512 --env-file <prod.env>`) or Render (`backend/render.yaml`) / Docker (`backend/Dockerfile`)
 - Database/auth/storage: InsForge
 
-Set the production `CORS_ORIGINS` and `VITE_API_URL` accordingly.
+The deployed frontend calls `/api/*` on its own origin. Both `vercel.json` files
+rewrite that path to the compute service, so no production `VITE_API_URL` is
+needed. Local development still uses `VITE_API_URL` from `frontend/.env.local`.
+
+On the free 512 MB compute tier, set `WARM_DATASET_CACHE=false` so the ~84k-row
+analytics dataset is not preloaded at startup (the prediction flow does not need
+it). The Docker build also prunes the severity model from 180 to 90 trees per
+stage (`python -m app.ml.trim_model`), because deserializing the full model peaks
+above 400 MB. The 90-tree subset keeps ~93% prediction agreement with the full
+model. If you need the full model and analytics together, use a machine with at
+least 2 GB RAM and remove the trim step.
 
 ## License
 

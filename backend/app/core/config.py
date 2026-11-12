@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     bundle_dataset_path: str = "data/accidents_uk_2022.csv"
 
     data_cache_ttl_seconds: int = 600
+    warm_dataset_cache: bool = True
     max_dbscan_points: int = 20000
     max_export_rows: int = 25000
     rate_limit_per_minute: int = 180

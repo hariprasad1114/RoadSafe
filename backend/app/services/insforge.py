@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, Iterator
 
 import httpx
 
@@ -195,6 +196,60 @@ class InsForgeClient:
             for page in executor.map(fetch_page, range(pages)):
                 rows.extend(page)
         return rows[:total]
+
+    def iter_csv_pages(
+        self,
+        table: str,
+        *,
+        select: str = "*",
+        order: str = "accident_id.asc",
+        page_size: int = 1000,
+        max_rows: int | None = None,
+        token: str | None = None,
+        admin: bool = False,
+    ) -> Iterator[str]:
+        """Yield CSV chunks instead of building one large list of row dicts."""
+        page_size = max(1, min(page_size, 1000))
+        total = self.count_records(table, token=token, admin=admin)
+        if not total:
+            return
+        if max_rows:
+            total = min(total, max_rows)
+        pages = math.ceil(total / page_size)
+
+        def fetch_page(page_index: int) -> str:
+            offset = page_index * page_size
+            limit = min(page_size, total - offset)
+            if limit <= 0:
+                return ""
+            response = self.request(
+                "GET",
+                f"/api/database/records/{table}",
+                params={"select": select, "order": order, "limit": limit, "offset": offset},
+                token=token,
+                admin=admin,
+                headers={"Accept": "text/csv"},
+            )
+            content_type = response.headers.get("Content-Type", "")
+            if "csv" not in content_type.lower():
+                raise InsForgeError(
+                    f"InsForge did not return CSV for {table} (Content-Type: {content_type})"
+                )
+            text = response.text
+            # The InsForge gateway wraps CSV bodies in a JSON string.
+            if text.startswith('"'):
+                try:
+                    parsed = json.loads(text)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, str):
+                    return parsed
+            return text
+
+        with ThreadPoolExecutor(max_workers=min(8, max(1, pages))) as executor:
+            for csv_page in executor.map(fetch_page, range(pages)):
+                if csv_page:
+                    yield csv_page
 
     def insert_records(
         self,

@@ -1,8 +1,21 @@
 import { getAccessToken } from "@/lib/insforge";
 
-const rawBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const configuredBaseUrl = (import.meta.env.VITE_API_URL || "")
+  .trim()
+  .replace(/\/+$/, "");
+const localhostPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+const pageIsLocalhost =
+  typeof window === "undefined" ||
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
 
-export const API_URL = rawBaseUrl.replace(/\/+$/, "");
+// A localhost URL on a deployed site points at the visitor's own machine, so
+// fall back to same-origin requests. Vercel rewrites /api/* to the deployed API
+// (see vercel.json). Locally, keep talking to the FastAPI dev server.
+export const API_URL =
+  localhostPattern.test(configuredBaseUrl) && !pageIsLocalhost
+    ? ""
+    : configuredBaseUrl || (pageIsLocalhost ? "http://localhost:8000" : "");
 
 export class ApiError extends Error {
   status: number;
@@ -26,7 +39,13 @@ interface RequestOptions {
 }
 
 function buildUrl(path: string, params?: QueryParams): string {
-  const url = new URL(`${API_URL}${path.startsWith("/") ? path : `/${path}`}`);
+  const baseUrl =
+    API_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost");
+  const url = new URL(
+    `${API_URL}${path.startsWith("/") ? path : `/${path}`}`,
+    baseUrl,
+  );
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === null || value === "") continue;

@@ -17,6 +17,7 @@ frontend/.env.local
 # generated and large artifacts
 backend/data/raw/
 backend/models/severity_flat_pipeline.joblib
+backend/fly.toml
 frontend/dist/
 frontend/.vite/
 *.tsbuildinfo

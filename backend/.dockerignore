@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets must be injected at runtime, never baked into the image
+.env
+
+# Large files not used by the serving app
+data/raw/
+models/severity_flat_pipeline.joblib
+models/evaluation/
+
+# Development-only content
+tests/
+training/
+scripts/

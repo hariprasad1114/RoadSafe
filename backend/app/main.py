@@ -32,7 +32,8 @@ def _warm_caches() -> None:
         get_model_service().metadata()
         get_recommendation_service().list()
         get_hotspot_service().list_clusters("kmeans", limit=50)
-        get_repository().get()
+        if settings.warm_dataset_cache:
+            get_repository().get()
         logger.info("RoadSafe caches warmed")
     except Exception:
         logger.exception("Cache warm-up failed; requests will load data lazily")

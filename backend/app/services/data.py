@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import json
 import logging
 import threading
 import time
@@ -9,12 +11,41 @@ import pandas as pd
 
 from app.core.config import Settings
 from app.ml.features import CLASS_ORDER, TARGET
-from app.services.insforge import InsForgeClient
+from app.services.insforge import InsForgeClient, InsForgeError
 
 logger = logging.getLogger(__name__)
 
 DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 TIME_ORDER = ["Morning", "Afternoon", "Evening", "Night", "Other"]
+
+CATEGORY_COLUMNS = [
+    "time_of_day",
+    "day_of_week",
+    "weather",
+    "road_condition",
+    "road_type",
+    "vehicle_type",
+    "lighting_condition",
+    "severity",
+]
+
+REMOTE_SELECT = (
+    "accident_id,accident_date,latitude,longitude,time_of_day,"
+    "day_of_week,weather,road_condition,road_type,vehicle_type,"
+    "speed_limit,lighting_condition,severity,source_dataset"
+)
+
+
+def _clean_text_column(series: pd.Series) -> pd.Series:
+    if isinstance(series.dtype, pd.CategoricalDtype):
+        if "Other" not in series.cat.categories:
+            series = series.cat.add_categories(["Other"])
+        series = series.fillna("Other")
+        stripped = [str(value).strip() for value in series.cat.categories]
+        if len(set(stripped)) == len(stripped):
+            return series.cat.rename_categories(stripped)
+        return series.astype(str).str.strip()
+    return series.fillna("Other").astype(str).str.strip()
 
 
 class DataUnavailableError(RuntimeError):
@@ -36,21 +67,9 @@ class DataRepository:
         return self._frame is not None
 
     def _normalize(self, frame: pd.DataFrame) -> pd.DataFrame:
-        frame = frame.copy()
-        for column in [
-            "accident_id",
-            "time_of_day",
-            "day_of_week",
-            "weather",
-            "road_condition",
-            "road_type",
-            "vehicle_type",
-            "lighting_condition",
-            "severity",
-            "source_dataset",
-        ]:
+        for column in ["accident_id", *CATEGORY_COLUMNS, "source_dataset"]:
             if column in frame.columns:
-                frame[column] = frame[column].fillna("Other").astype(str).str.strip()
+                frame[column] = _clean_text_column(frame[column])
         if "accident_date" in frame.columns:
             frame["accident_date"] = pd.to_datetime(frame["accident_date"], errors="coerce")
         else:
@@ -63,9 +82,30 @@ class DataRepository:
         frame = frame[frame[TARGET].isin(CLASS_ORDER)]
         frame["is_severe"] = frame[TARGET].isin(["Serious", "Fatal"])
         frame["is_fatal"] = frame[TARGET].eq("Fatal")
-        frame["month"] = frame["accident_date"].dt.to_period("M").astype(str)
+        frame["month"] = frame["accident_date"].dt.to_period("M").astype(str).astype("category")
         frame["year"] = frame["accident_date"].dt.year
         return frame.reset_index(drop=True)
+
+    def _csv_dtypes(self) -> dict[str, object]:
+        categories: dict[str, list[str]] = {
+            "severity": CLASS_ORDER,
+            "time_of_day": TIME_ORDER,
+            "day_of_week": DAY_ORDER,
+        }
+        metadata_path = self.settings.model_path / "severity_metadata.json"
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            for column, values in metadata.get("categories", {}).items():
+                categories[column] = list(values)
+        dtypes: dict[str, object] = {
+            column: pd.CategoricalDtype(
+                categories=sorted({str(value) for value in values} | {"Other"}),
+                ordered=False,
+            )
+            for column, values in categories.items()
+        }
+        dtypes.update({"latitude": "float32", "longitude": "float32", "speed_limit": "Int16"})
+        return dtypes
 
     def _load_bundled(self) -> pd.DataFrame:
         path = self.settings.bundle_dataset
@@ -76,17 +116,43 @@ class DataRepository:
         return self._normalize(frame)
 
     def _load_remote(self) -> pd.DataFrame:
-        rows = self.client.fetch_all(
-            "accident_records",
-            select="*",
-            order="accident_id.asc",
-            page_size=1000,
-            max_rows=250000,
-            admin=False,
-        )
-        if not rows:
-            raise DataUnavailableError("InsForge returned no accident records")
-        frame = self._normalize(pd.DataFrame(rows))
+        frame: pd.DataFrame | None = None
+        try:
+            dtypes = self._csv_dtypes()
+            pages = [
+                pd.read_csv(
+                    io.StringIO(csv_page),
+                    dtype=dtypes,
+                    parse_dates=["accident_date"],
+                )
+                for csv_page in self.client.iter_csv_pages(
+                    "accident_records",
+                    select=REMOTE_SELECT,
+                    order="accident_id.asc",
+                    page_size=1000,
+                    max_rows=250000,
+                    admin=False,
+                )
+            ]
+            if pages:
+                frame = pd.concat(pages, ignore_index=True)
+        except (InsForgeError, ValueError, pd.errors.ParserError) as exc:
+            logger.warning("CSV accident fetch failed (%s); falling back to JSON pages", exc)
+
+        if frame is None:
+            rows = self.client.fetch_all(
+                "accident_records",
+                select=REMOTE_SELECT,
+                order="accident_id.asc",
+                page_size=1000,
+                max_rows=250000,
+                admin=False,
+            )
+            if not rows:
+                raise DataUnavailableError("InsForge returned no accident records")
+            frame = pd.DataFrame(rows)
+
+        frame = self._normalize(frame)
         if frame.empty:
             raise DataUnavailableError("InsForge accident records were empty after validation")
         self.source = "insforge"

@@ -3,6 +3,10 @@
   "outputDirectory": "frontend/dist",
   "framework": "vite",
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://roadsafe-api-b867ea26-fd8d-4657-a03e-1453777a44d5.fly.dev/api/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
