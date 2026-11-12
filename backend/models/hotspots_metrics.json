@@ -1,0 +1,163 @@
+{
+  "trained_at": "2026-11-06T12:38:54.982847+00:00",
+  "dataset_rows": 105982,
+  "clustering_note": "Clustering is evaluated with geographic cluster sizes, severity mixes, silhouette score for K-Means, and DBSCAN noise counts. Classification accuracy is not used.",
+  "kmeans": {
+    "n_clusters": 12,
+    "cluster_sizes": [
+      34709,
+      11488,
+      11227,
+      9024,
+      7459,
+      6507,
+      6095,
+      4749,
+      4174,
+      3622,
+      3509,
+      3419
+    ],
+    "silhouette_haversine_sample": 0.4494,
+    "centroids": [
+      {
+        "cluster_id": 5,
+        "latitude": 51.51774,
+        "longitude": -0.190601
+      },
+      {
+        "cluster_id": 1,
+        "latitude": 52.549381,
+        "longitude": -1.650825
+      },
+      {
+        "cluster_id": 2,
+        "latitude": 53.50837,
+        "longitude": -2.720326
+      },
+      {
+        "cluster_id": 9,
+        "latitude": 53.611866,
+        "longitude": -1.510708
+      },
+      {
+        "cluster_id": 0,
+        "latitude": 51.11076,
+        "longitude": -1.329837
+      },
+      {
+        "cluster_id": 4,
+        "latitude": 51.322533,
+        "longitude": 0.614972
+      },
+      {
+        "cluster_id": 7,
+        "latitude": 51.475122,
+        "longitude": -2.697645
+      },
+      {
+        "cluster_id": 11,
+        "latitude": 53.262008,
+        "longitude": -0.362373
+      },
+      {
+        "cluster_id": 8,
+        "latitude": 56.064326,
+        "longitude": -3.723913
+      },
+      {
+        "cluster_id": 6,
+        "latitude": 54.834975,
+        "longitude": -1.574842
+      },
+      {
+        "cluster_id": 3,
+        "latitude": 50.846676,
+        "longitude": -4.275057
+      },
+      {
+        "cluster_id": 10,
+        "latitude": 52.346372,
+        "longitude": 1.063822
+      }
+    ]
+  },
+  "dbscan": {
+    "eps_km": 2.0,
+    "min_samples": 20,
+    "sample_size": 20000,
+    "cluster_count": 67,
+    "noise_count": 11261,
+    "noise_percentage": 56.31,
+    "cluster_sizes": [
+      4470,
+      510,
+      238,
+      171,
+      149,
+      136,
+      121,
+      118,
+      113,
+      106,
+      104,
+      102,
+      95,
+      94,
+      90,
+      82,
+      78,
+      72,
+      70,
+      67,
+      67,
+      66,
+      60,
+      60,
+      54,
+      54,
+      52,
+      50,
+      50,
+      49,
+      47,
+      46,
+      44,
+      43,
+      41,
+      41,
+      40,
+      40,
+      39,
+      38,
+      37,
+      36,
+      36,
+      36,
+      35,
+      35,
+      33,
+      31,
+      30,
+      30,
+      30,
+      30,
+      30,
+      29,
+      28,
+      26,
+      26,
+      26,
+      25,
+      25,
+      24,
+      23,
+      23,
+      23,
+      22,
+      22,
+      21
+    ],
+    "largest_cluster": 4470
+  }
+}

@@ -1,0 +1,473 @@
+{
+  "model_name": "Hierarchical Random Forest (2-stage)",
+  "model_kind": "hierarchical_random_forest",
+  "model_version": "1.2.0",
+  "trained_at": "2026-11-06T13:29:17.241624+00:00",
+  "dataset_version": "a4d8639ffa1fb6e7",
+  "dataset_path": "data\\accidents_uk_2022.csv",
+  "dataset_rows": 105982,
+  "training_pool_rows": 70000,
+  "training_rows": 56000,
+  "validation_rows": 8400,
+  "test_rows": 14000,
+  "features": [
+    "latitude",
+    "longitude",
+    "speed_limit",
+    "is_night",
+    "is_poor_lighting",
+    "is_wet",
+    "is_high_speed",
+    "is_two_wheeler",
+    "is_intersection",
+    "is_weekend",
+    "road_type",
+    "weather",
+    "road_condition",
+    "time_of_day",
+    "day_of_week",
+    "vehicle_type",
+    "lighting_condition"
+  ],
+  "raw_features": [
+    "latitude",
+    "longitude",
+    "road_type",
+    "weather",
+    "road_condition",
+    "time_of_day",
+    "day_of_week",
+    "vehicle_type",
+    "speed_limit",
+    "lighting_condition"
+  ],
+  "derived_features": [
+    "is_night",
+    "is_poor_lighting",
+    "is_wet",
+    "is_high_speed",
+    "is_two_wheeler",
+    "is_intersection",
+    "is_weekend"
+  ],
+  "categorical_features": [
+    "road_type",
+    "weather",
+    "road_condition",
+    "time_of_day",
+    "day_of_week",
+    "vehicle_type",
+    "lighting_condition"
+  ],
+  "numeric_features": [
+    "latitude",
+    "longitude",
+    "speed_limit",
+    "is_night",
+    "is_poor_lighting",
+    "is_wet",
+    "is_high_speed",
+    "is_two_wheeler",
+    "is_intersection",
+    "is_weekend"
+  ],
+  "class_order": [
+    "Minor",
+    "Serious",
+    "Fatal"
+  ],
+  "class_counts": {
+    "Minor": 81053,
+    "Serious": 23327,
+    "Fatal": 1602
+  },
+  "test_size": 0.2,
+  "validation_size": 0.15,
+  "random_state": 42,
+  "n_estimators": 180,
+  "class_weight": "balanced_subsample",
+  "decision_rule": {
+    "fatal_threshold": 0.16,
+    "serious_weight": 2.0,
+    "validation_score": 0.26561,
+    "description": "The deployed decision rule is safety-oriented: Fatal is selected when the estimated fatal probability reaches the tuned threshold; otherwise Serious is selected when the weighted Serious estimate reaches the Minor estimate. This prioritizes severe-outcome recall."
+  },
+  "metrics": {
+    "accuracy": 0.53,
+    "macro_precision": 0.3769,
+    "macro_recall": 0.4465,
+    "macro_f1": 0.3619,
+    "weighted_precision": 0.6829,
+    "weighted_recall": 0.53,
+    "weighted_f1": 0.5794,
+    "per_class": {
+      "Minor": {
+        "precision": 0.8176,
+        "recall": 0.5542,
+        "f1": 0.6606,
+        "f2": 0.5924,
+        "support": 10707
+      },
+      "Serious": {
+        "precision": 0.2581,
+        "recall": 0.4599,
+        "f1": 0.3306,
+        "f2": 0.3977,
+        "support": 3081
+      },
+      "Fatal": {
+        "precision": 0.0552,
+        "recall": 0.3255,
+        "f1": 0.0943,
+        "f2": 0.1644,
+        "support": 212
+      }
+    },
+    "confusion_matrix": [
+      [
+        5934,
+        3998,
+        775
+      ],
+      [
+        1257,
+        1417,
+        407
+      ],
+      [
+        67,
+        76,
+        69
+      ]
+    ],
+    "labels": [
+      "Minor",
+      "Serious",
+      "Fatal"
+    ]
+  },
+  "argmax_metrics": {
+    "accuracy": 0.7329,
+    "macro_precision": 0.3876,
+    "macro_recall": 0.362,
+    "macro_f1": 0.3603,
+    "weighted_precision": 0.6747,
+    "weighted_recall": 0.7329,
+    "weighted_f1": 0.6932,
+    "per_class": {
+      "Minor": {
+        "precision": 0.7824,
+        "recall": 0.9102,
+        "f1": 0.8415,
+        "f2": 0.8814,
+        "support": 10707
+      },
+      "Serious": {
+        "precision": 0.3445,
+        "recall": 0.1665,
+        "f1": 0.2245,
+        "f2": 0.1857,
+        "support": 3081
+      },
+      "Fatal": {
+        "precision": 0.0357,
+        "recall": 0.0094,
+        "f1": 0.0149,
+        "f2": 0.0111,
+        "support": 212
+      }
+    },
+    "confusion_matrix": [
+      [
+        9745,
+        927,
+        35
+      ],
+      [
+        2549,
+        513,
+        19
+      ],
+      [
+        161,
+        49,
+        2
+      ]
+    ],
+    "labels": [
+      "Minor",
+      "Serious",
+      "Fatal"
+    ]
+  },
+  "flat_model_metrics": {
+    "accuracy": 0.7058,
+    "macro_precision": 0.3928,
+    "macro_recall": 0.3794,
+    "macro_f1": 0.3831,
+    "weighted_precision": 0.6768,
+    "weighted_recall": 0.7058,
+    "weighted_f1": 0.6892,
+    "per_class": {
+      "Minor": {
+        "precision": 0.7907,
+        "recall": 0.8519,
+        "f1": 0.8202,
+        "f2": 0.8389,
+        "support": 10707
+      },
+      "Serious": {
+        "precision": 0.3229,
+        "recall": 0.2438,
+        "f1": 0.2778,
+        "f2": 0.2563,
+        "support": 3081
+      },
+      "Fatal": {
+        "precision": 0.0647,
+        "recall": 0.0425,
+        "f1": 0.0513,
+        "f2": 0.0456,
+        "support": 212
+      }
+    },
+    "confusion_matrix": [
+      [
+        9121,
+        1504,
+        82
+      ],
+      [
+        2282,
+        751,
+        48
+      ],
+      [
+        132,
+        71,
+        9
+      ]
+    ],
+    "labels": [
+      "Minor",
+      "Serious",
+      "Fatal"
+    ]
+  },
+  "baselines": {
+    "dummy_most_frequent": {
+      "accuracy": 0.7648,
+      "macro_precision": 0.2549,
+      "macro_recall": 0.3333,
+      "macro_f1": 0.2889,
+      "weighted_precision": 0.5849,
+      "weighted_recall": 0.7648,
+      "weighted_f1": 0.6629,
+      "per_class": {
+        "Minor": {
+          "precision": 0.7648,
+          "recall": 1.0,
+          "f1": 0.8667,
+          "f2": 0.9421,
+          "support": 10707
+        },
+        "Serious": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "f2": 0.0,
+          "support": 3081
+        },
+        "Fatal": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "f2": 0.0,
+          "support": 212
+        }
+      },
+      "confusion_matrix": [
+        [
+          10707,
+          0,
+          0
+        ],
+        [
+          3081,
+          0,
+          0
+        ],
+        [
+          212,
+          0,
+          0
+        ]
+      ],
+      "labels": [
+        "Minor",
+        "Serious",
+        "Fatal"
+      ]
+    },
+    "logistic_regression": {
+      "accuracy": 0.4889,
+      "macro_precision": 0.3657,
+      "macro_recall": 0.4796,
+      "macro_f1": 0.3258,
+      "weighted_precision": 0.6763,
+      "weighted_recall": 0.4889,
+      "weighted_f1": 0.5602,
+      "per_class": {
+        "Minor": {
+          "precision": 0.8124,
+          "recall": 0.5559,
+          "f1": 0.6601,
+          "f2": 0.5934,
+          "support": 10707
+        },
+        "Serious": {
+          "precision": 0.2472,
+          "recall": 0.246,
+          "f1": 0.2466,
+          "f2": 0.2463,
+          "support": 3081
+        },
+        "Fatal": {
+          "precision": 0.0374,
+          "recall": 0.6368,
+          "f1": 0.0707,
+          "f2": 0.1515,
+          "support": 212
+        }
+      },
+      "confusion_matrix": [
+        [
+          5952,
+          2271,
+          2484
+        ],
+        [
+          1334,
+          758,
+          989
+        ],
+        [
+          40,
+          37,
+          135
+        ]
+      ],
+      "labels": [
+        "Minor",
+        "Serious",
+        "Fatal"
+      ]
+    }
+  },
+  "top_features": [
+    {
+      "feature": "numeric__latitude",
+      "importance": 0.26186
+    },
+    {
+      "feature": "numeric__longitude",
+      "importance": 0.2519
+    },
+    {
+      "feature": "numeric__speed_limit",
+      "importance": 0.06024
+    },
+    {
+      "feature": "numeric__is_high_speed",
+      "importance": 0.0283
+    },
+    {
+      "feature": "categorical__day_of_week_Friday",
+      "importance": 0.01856
+    },
+    {
+      "feature": "categorical__time_of_day_Afternoon",
+      "importance": 0.01831
+    },
+    {
+      "feature": "categorical__time_of_day_Morning",
+      "importance": 0.01776
+    },
+    {
+      "feature": "categorical__road_type_Urban Road",
+      "importance": 0.01638
+    },
+    {
+      "feature": "categorical__time_of_day_Evening",
+      "importance": 0.01617
+    },
+    {
+      "feature": "categorical__day_of_week_Monday",
+      "importance": 0.01581
+    },
+    {
+      "feature": "categorical__day_of_week_Thursday",
+      "importance": 0.01567
+    },
+    {
+      "feature": "categorical__day_of_week_Tuesday",
+      "importance": 0.01561
+    },
+    {
+      "feature": "numeric__is_weekend",
+      "importance": 0.01498
+    },
+    {
+      "feature": "categorical__day_of_week_Wednesday",
+      "importance": 0.01479
+    },
+    {
+      "feature": "categorical__day_of_week_Saturday",
+      "importance": 0.01447
+    },
+    {
+      "feature": "categorical__day_of_week_Sunday",
+      "importance": 0.01425
+    },
+    {
+      "feature": "categorical__vehicle_type_Car",
+      "importance": 0.01408
+    },
+    {
+      "feature": "categorical__road_type_Rural Road",
+      "importance": 0.01324
+    },
+    {
+      "feature": "categorical__road_type_Highway",
+      "importance": 0.01251
+    },
+    {
+      "feature": "categorical__vehicle_type_Truck",
+      "importance": 0.0125
+    },
+    {
+      "feature": "categorical__weather_Clear",
+      "importance": 0.01227
+    },
+    {
+      "feature": "categorical__road_condition_Dry",
+      "importance": 0.01127
+    },
+    {
+      "feature": "categorical__lighting_condition_Good",
+      "importance": 0.01123
+    },
+    {
+      "feature": "categorical__road_condition_Wet",
+      "importance": 0.01085
+    },
+    {
+      "feature": "numeric__is_wet",
+      "importance": 0.01042
+    }
+  ],
+  "probability_note": "Probabilities are model estimates from a class-weighted hierarchical Random Forest. They have not been calibrated and should not be read as exact real-world likelihoods. The predicted class uses a safety-oriented decision rule.",
+  "performance_note": "The supplied accident-condition features carry limited signal for Fatal outcomes because fatal collisions are rare and partly depend on unobserved factors such as impact speed, vehicle safety, and emergency response. Serious and Fatal recall are reported explicitly; accuracy alone is not used to judge the model.",
+  "dataset_source": "UK Department for Transport road safety open data, collisions 2022",
+  "dataset_licence": "Open Government Licence v3.0"
+}

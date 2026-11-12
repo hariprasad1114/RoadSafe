@@ -1,0 +1,164 @@
+{
+  "model_name": "Hierarchical Random Forest (2-stage)",
+  "model_kind": "hierarchical_random_forest",
+  "model_version": "1.2.0",
+  "trained_at": "2026-11-06T13:29:17.241624+00:00",
+  "dataset_version": "a4d8639ffa1fb6e7",
+  "features": [
+    "latitude",
+    "longitude",
+    "speed_limit",
+    "is_night",
+    "is_poor_lighting",
+    "is_wet",
+    "is_high_speed",
+    "is_two_wheeler",
+    "is_intersection",
+    "is_weekend",
+    "road_type",
+    "weather",
+    "road_condition",
+    "time_of_day",
+    "day_of_week",
+    "vehicle_type",
+    "lighting_condition"
+  ],
+  "raw_features": [
+    "latitude",
+    "longitude",
+    "road_type",
+    "weather",
+    "road_condition",
+    "time_of_day",
+    "day_of_week",
+    "vehicle_type",
+    "speed_limit",
+    "lighting_condition"
+  ],
+  "derived_features": [
+    "is_night",
+    "is_poor_lighting",
+    "is_wet",
+    "is_high_speed",
+    "is_two_wheeler",
+    "is_intersection",
+    "is_weekend"
+  ],
+  "numeric_features": [
+    "latitude",
+    "longitude",
+    "speed_limit",
+    "is_night",
+    "is_poor_lighting",
+    "is_wet",
+    "is_high_speed",
+    "is_two_wheeler",
+    "is_intersection",
+    "is_weekend"
+  ],
+  "categorical_features": [
+    "road_type",
+    "weather",
+    "road_condition",
+    "time_of_day",
+    "day_of_week",
+    "vehicle_type",
+    "lighting_condition"
+  ],
+  "categories": {
+    "road_type": [
+      "Highway",
+      "Intersection",
+      "Rural Road",
+      "Urban Road"
+    ],
+    "weather": [
+      "Clear",
+      "Cloudy",
+      "Foggy",
+      "Other",
+      "Rainy",
+      "Snowy"
+    ],
+    "road_condition": [
+      "Dry",
+      "Flooded",
+      "Other",
+      "Snowy/Icy",
+      "Wet"
+    ],
+    "time_of_day": [
+      "Afternoon",
+      "Evening",
+      "Morning",
+      "Night"
+    ],
+    "day_of_week": [
+      "Friday",
+      "Monday",
+      "Saturday",
+      "Sunday",
+      "Thursday",
+      "Tuesday",
+      "Wednesday"
+    ],
+    "vehicle_type": [
+      "Bus",
+      "Car",
+      "Other",
+      "Truck",
+      "Two-Wheeler"
+    ],
+    "lighting_condition": [
+      "Good",
+      "Moderate",
+      "No Lighting",
+      "Other",
+      "Poor"
+    ]
+  },
+  "ranges": {
+    "latitude": [
+      49.914329,
+      60.435892
+    ],
+    "longitude": [
+      -7.353562,
+      1.755051
+    ],
+    "speed_limit": [
+      20.0,
+      70.0
+    ]
+  },
+  "bounds": {
+    "min_latitude": 49.914329,
+    "max_latitude": 60.435892,
+    "min_longitude": -7.353562,
+    "max_longitude": 1.755051,
+    "center_latitude": 51.792304,
+    "center_longitude": -1.0710115
+  },
+  "class_order": [
+    "Minor",
+    "Serious",
+    "Fatal"
+  ],
+  "class_counts": {
+    "Minor": 81053,
+    "Serious": 23327,
+    "Fatal": 1602
+  },
+  "dataset_rows": 105982,
+  "training_pool_rows": 70000,
+  "decision_rule": {
+    "fatal_threshold": 0.16,
+    "serious_weight": 2.0,
+    "validation_score": 0.26561,
+    "description": "The deployed decision rule is safety-oriented: Fatal is selected when the estimated fatal probability reaches the tuned threshold; otherwise Serious is selected when the weighted Serious estimate reaches the Minor estimate. This prioritizes severe-outcome recall."
+  },
+  "dataset_source": "UK Department for Transport road safety open data, collisions 2022",
+  "dataset_licence": "Open Government Licence v3.0",
+  "probability_note": "Probabilities are model estimates from a class-weighted hierarchical Random Forest. They have not been calibrated and should not be read as exact real-world likelihoods. The predicted class uses a safety-oriented decision rule.",
+  "performance_note": "The supplied accident-condition features carry limited signal for Fatal outcomes because fatal collisions are rare and partly depend on unobserved factors such as impact speed, vehicle safety, and emergency response. Serious and Fatal recall are reported explicitly; accuracy alone is not used to judge the model."
+}
