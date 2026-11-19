@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
-  CheckCircle2,
-  Lightbulb,
+  Compass,
+  Gauge,
+  Info,
+  MapPin,
   MapPinned,
+  Milestone,
+  Navigation,
+  Route as RouteIcon,
   Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { ErrorState, LoadingState } from "@/components/ui/Feedback";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select } from "@/components/ui/Field";
@@ -21,7 +25,8 @@ import { api, errorMessage } from "@/lib/api";
 import { PredictionMap } from "@/components/maps/PredictionMap";
 import { ProbabilityBars } from "@/components/charts/ProbabilityBars";
 import { RiskGauge } from "@/components/charts/RiskGauge";
-import { cn, formatNumber, formatPercent } from "@/lib/utils";
+import { calculateDistanceKm, cn, formatNumber, formatPercent } from "@/lib/utils";
+import { PUTTUR_LOCATIONS, type LocationPreset } from "@/lib/constants";
 
 const TIME_OPTIONS = ["Morning", "Afternoon", "Evening", "Night"];
 const DAY_OPTIONS = [
@@ -40,25 +45,42 @@ const VEHICLE_OPTIONS = ["Car", "Two-Wheeler", "Truck", "Bus", "Other"];
 const LIGHTING_OPTIONS = ["Good", "Moderate", "Poor", "No Lighting", "Other"];
 
 export function PredictPage() {
-  useDocumentTitle("Predict severity");
+  useDocumentTitle("Predict severity & Route Corridor Risk");
   const { user } = useAuth();
   const { toast } = useToast();
 
   const { data: metadata } = useApi<Metadata>("/api/v1/metadata");
-  const defaults = metadata?.defaults;
   const categories = metadata?.categories;
-  const bounds = metadata?.bounds;
-  const mapBounds = bounds
-    ? {
-        minLatitude: bounds.min_latitude,
-        maxLatitude: bounds.max_latitude,
-        minLongitude: bounds.min_longitude,
-        maxLongitude: bounds.max_longitude,
-      }
-    : undefined;
 
-  const [latitude, setLatitude] = useState(51.5074);
-  const [longitude, setLongitude] = useState(-0.1278);
+  // Mode: "route" (Place A to Place B) vs "single"
+  const [mode, setMode] = useState<"route" | "single">("route");
+  const [activeTarget, setActiveTarget] = useState<"origin" | "destination">("origin");
+
+  // Point A (Start / Origin) - Default Puttur Town Center
+  const [latitude, setLatitude] = useState(13.4428);
+  const [longitude, setLongitude] = useState(79.5544);
+  const [originPresetId, setOriginPresetId] = useState<string>("puttur-town");
+
+  // Point B (Destination / End) - Default Puttur - Tirupati Road (NH 716)
+  const [destLatitude, setDestLatitude] = useState(13.4750);
+  const [destLongitude, setDestLongitude] = useState(79.5420);
+  const [destPresetId, setDestPresetId] = useState<string>("puttur-tirupati-nh716");
+
+  // Distance selection (in km)
+  const autoDistance = useMemo(() => {
+    return calculateDistanceKm(latitude, longitude, destLatitude, destLongitude);
+  }, [latitude, longitude, destLatitude, destLongitude]);
+
+  const [selectedDistance, setSelectedDistance] = useState<number>(autoDistance);
+  const [isManualDistance, setIsManualDistance] = useState(false);
+
+  useEffect(() => {
+    if (!isManualDistance) {
+      setSelectedDistance(autoDistance);
+    }
+  }, [autoDistance, isManualDistance]);
+
+  // Scenario parameters
   const [roadType, setRoadType] = useState("Urban Road");
   const [weather, setWeather] = useState("Clear");
   const [roadCondition, setRoadCondition] = useState("Dry");
@@ -71,36 +93,6 @@ export function PredictPage() {
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!defaults) return;
-    setLatitude(defaults.latitude);
-    setLongitude(defaults.longitude);
-    setRoadType(defaults.road_type);
-    setWeather(defaults.weather);
-    setRoadCondition(defaults.road_condition);
-    setTimeOfDay(defaults.time_of_day);
-    setDayOfWeek(defaults.day_of_week);
-    setVehicleType(defaults.vehicle_type);
-    setSpeedLimit(defaults.speed_limit);
-    setLighting(defaults.lighting_condition);
-  }, [defaults]);
-
-  useEffect(() => {
-    if (!categories) return;
-    const pick = (key: string, fallback: string) => (current: string) => {
-      const allowed = categories[key] || [];
-      if (!allowed.length || allowed.includes(current)) return current;
-      return allowed.includes(fallback) ? fallback : allowed[0];
-    };
-    setRoadType(pick("road_type", "Urban Road"));
-    setWeather(pick("weather", "Clear"));
-    setRoadCondition(pick("road_condition", "Dry"));
-    setTimeOfDay(pick("time_of_day", "Afternoon"));
-    setDayOfWeek(pick("day_of_week", "Friday"));
-    setVehicleType(pick("vehicle_type", "Car"));
-    setLighting(pick("lighting_condition", "Good"));
-  }, [categories]);
-
   const roadTypes = categories?.road_type || ROAD_TYPE_OPTIONS;
   const weathers = categories?.weather || WEATHER_OPTIONS;
   const roadConditions = categories?.road_condition || ROAD_CONDITION_OPTIONS;
@@ -109,31 +101,64 @@ export function PredictPage() {
   const vehicles = categories?.vehicle_type || VEHICLE_OPTIONS;
   const lightings = categories?.lighting_condition || LIGHTING_OPTIONS;
 
+  function handleSelectOriginPreset(presetId: string) {
+    setOriginPresetId(presetId);
+    const found = PUTTUR_LOCATIONS.find((l) => l.id === presetId);
+    if (found) {
+      setLatitude(found.latitude);
+      setLongitude(found.longitude);
+      if (found.roadType) setRoadType(found.roadType);
+      if (found.defaultSpeedLimit) setSpeedLimit(found.defaultSpeedLimit);
+    }
+  }
+
+  function handleSelectDestPreset(presetId: string) {
+    setDestPresetId(presetId);
+    const found = PUTTUR_LOCATIONS.find((l) => l.id === presetId);
+    if (found) {
+      setDestLatitude(found.latitude);
+      setDestLongitude(found.longitude);
+    }
+  }
+
+  const originName = useMemo(() => {
+    return (
+      PUTTUR_LOCATIONS.find(
+        (l) => Math.abs(l.latitude - latitude) < 0.005 && Math.abs(l.longitude - longitude) < 0.005,
+      )?.name || `Point A (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+    );
+  }, [latitude, longitude]);
+
+  const destName = useMemo(() => {
+    return (
+      PUTTUR_LOCATIONS.find(
+        (l) =>
+          Math.abs(l.latitude - destLatitude) < 0.005 &&
+          Math.abs(l.longitude - destLongitude) < 0.005,
+      )?.name || `Point B (${destLatitude.toFixed(4)}, ${destLongitude.toFixed(4)})`
+    );
+  }, [destLatitude, destLongitude]);
+
   async function handleSubmit() {
     setError(null);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      setError("Enter valid numeric coordinates before predicting.");
+      setError("Enter valid numeric coordinates for the starting point.");
       return;
     }
-    if (
-      bounds &&
-      (latitude < bounds.min_latitude ||
-        latitude > bounds.max_latitude ||
-        longitude < bounds.min_longitude ||
-        longitude > bounds.max_longitude)
-    ) {
-      setError(
-        `Location is outside the UK area covered by the dataset. Latitude must be between ` +
-          `${bounds.min_latitude.toFixed(4)} and ${bounds.max_latitude.toFixed(4)}, and ` +
-          `longitude between ${bounds.min_longitude.toFixed(4)} and ${bounds.max_longitude.toFixed(4)}.`,
-      );
+    if (mode === "route" && (!Number.isFinite(destLatitude) || !Number.isFinite(destLongitude))) {
+      setError("Enter valid numeric coordinates for the destination point.");
       return;
     }
+
     setSubmitting(true);
     try {
+      // In route mode, evaluate representative corridor coordinates
+      const evalLat = mode === "route" ? Number(((latitude + destLatitude) / 2).toFixed(5)) : latitude;
+      const evalLng = mode === "route" ? Number(((longitude + destLongitude) / 2).toFixed(5)) : longitude;
+
       const payload: PredictionRequest = {
-        latitude,
-        longitude,
+        latitude: evalLat,
+        longitude: evalLng,
         road_type: roadType,
         weather,
         road_condition: roadCondition,
@@ -143,6 +168,7 @@ export function PredictPage() {
         speed_limit: speedLimit,
         lighting_condition: lighting,
       };
+
       const response = await api.post<PredictionResponse>(
         "/api/v1/predict",
         payload,
@@ -178,9 +204,9 @@ export function PredictPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Predictive intelligence"
-        title="Predict collision severity"
-        description="Estimate Minor, Serious or Fatal outcomes from a location and its context. Every result exposes probabilities, risk drivers and nearby hotspots."
+        eyebrow="Corridor & Location Intelligence"
+        title="Predict Road Severity & Corridor Risk"
+        description="Select road locations from one place to another (or pick a single point) in Andhra Pradesh (Chittoor / Puttur city), choose distance, road and weather context, and evaluate safety results."
         actions={
           result ? (
             <Button variant="outline" size="sm" onClick={reset}>
@@ -190,14 +216,15 @@ export function PredictPage() {
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
           <CardHeader
-            title="Scenario inputs"
-            description="Adjust the location and conditions. Click the map to move the pin."
+            title="Road Location & Corridor Settings"
+            description="Select places on the map or pick quick Puttur / Chittoor presets. Adjust distance and driving conditions."
           />
           <CardContent>
             <div className="space-y-5">
+              {/* Interactive Map */}
               <PredictionMap
                 latitude={latitude}
                 longitude={longitude}
@@ -205,44 +232,188 @@ export function PredictPage() {
                   setLatitude(lat);
                   setLongitude(lng);
                 }}
-                height={320}
-                bounds={mapBounds}
+                destLatitude={destLatitude}
+                destLongitude={destLongitude}
+                onDestChange={(lat, lng) => {
+                  setDestLatitude(lat);
+                  setDestLongitude(lng);
+                }}
+                mode={mode}
+                onModeChange={setMode}
+                activeTarget={activeTarget}
+                onActiveTargetChange={setActiveTarget}
+                distanceKm={selectedDistance}
+                onDistanceChange={(d) => {
+                  setSelectedDistance(d);
+                }}
+                originLabel={originName}
+                destLabel={destName}
+                height={350}
               />
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Latitude" htmlFor="latitude">
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="0.00001"
-                    min={bounds?.min_latitude ?? -90}
-                    max={bounds?.max_latitude ?? 90}
-                    value={latitude}
-                    onChange={(event) => setLatitude(Number(event.target.value))}
-                  />
-                </FormField>
-                <FormField label="Longitude" htmlFor="longitude">
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="0.00001"
-                    min={bounds?.min_longitude ?? -180}
-                    max={bounds?.max_longitude ?? 180}
-                    value={longitude}
-                    onChange={(event) => setLongitude(Number(event.target.value))}
-                  />
-                </FormField>
-              </div>
+              {/* Point A and Point B location selector cards */}
+              {mode === "route" ? (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-900">
+                      <RouteIcon className="h-4 w-4 text-indigo-600" />
+                      Route Selection (From Place A to Place B)
+                    </span>
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                      Distance: {selectedDistance.toFixed(2)} km
+                    </span>
+                  </div>
 
-              {bounds ? (
-                <p className="text-[11px] leading-relaxed text-slate-500">
-                  Dataset coverage: {bounds.min_latitude.toFixed(2)}° to{" "}
-                  {bounds.max_latitude.toFixed(2)}° latitude,{" "}
-                  {bounds.min_longitude.toFixed(2)}° to{" "}
-                  {bounds.max_longitude.toFixed(2)}° longitude.
-                </p>
-              ) : null}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {/* Place A Selector */}
+                    <div className="rounded-lg border border-emerald-200 bg-white p-2.5 space-y-1.5 shadow-xs">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-emerald-800 flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          Start Location (Place A)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTarget("origin")}
+                          className="text-[10px] font-semibold text-emerald-700 underline"
+                        >
+                          Pick on map
+                        </button>
+                      </div>
+                      <Select
+                        id="origin-preset"
+                        value={originPresetId}
+                        onChange={(e) => handleSelectOriginPreset(e.target.value)}
+                        className="text-xs"
+                      >
+                        <option value="">-- Custom Map Coordinates --</option>
+                        {PUTTUR_LOCATIONS.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                      </Select>
+                      <p className="font-mono text-[10px] text-slate-500 truncate">
+                        Lat: {latitude.toFixed(5)}, Lng: {longitude.toFixed(5)}
+                      </p>
+                    </div>
 
+                    {/* Place B Selector */}
+                    <div className="rounded-lg border border-rose-200 bg-white p-2.5 space-y-1.5 shadow-xs">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-rose-800 flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-rose-500" />
+                          Destination Location (Place B)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTarget("destination")}
+                          className="text-[10px] font-semibold text-rose-700 underline"
+                        >
+                          Pick on map
+                        </button>
+                      </div>
+                      <Select
+                        id="dest-preset"
+                        value={destPresetId}
+                        onChange={(e) => handleSelectDestPreset(e.target.value)}
+                        className="text-xs"
+                      >
+                        <option value="">-- Custom Map Coordinates --</option>
+                        {PUTTUR_LOCATIONS.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                      </Select>
+                      <p className="font-mono text-[10px] text-slate-500 truncate">
+                        Lat: {destLatitude.toFixed(5)}, Lng: {destLongitude.toFixed(5)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Select Distance Control */}
+                  <div className="pt-1 border-t border-indigo-100 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Milestone className="h-4 w-4 text-indigo-600" />
+                      <label htmlFor="route-distance" className="text-xs font-semibold text-slate-700">
+                        Selected Distance (km):
+                      </label>
+                      <Input
+                        id="route-distance"
+                        type="number"
+                        step="0.1"
+                        min="0.5"
+                        max="500"
+                        value={selectedDistance}
+                        onChange={(e) => {
+                          setIsManualDistance(true);
+                          setSelectedDistance(Number(e.target.value));
+                        }}
+                        className="w-24 h-7 text-xs font-semibold"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <span className="text-slate-400">Quick set:</span>
+                      {[5, 10, 15, 25, 50].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => {
+                            setIsManualDistance(true);
+                            setSelectedDistance(d);
+                          }}
+                          className={cn(
+                            "rounded px-1.5 py-0.5 border font-semibold",
+                            selectedDistance === d
+                              ? "bg-indigo-600 text-white border-indigo-600"
+                              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
+                          )}
+                        >
+                          {d}km
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManualDistance(false);
+                          setSelectedDistance(autoDistance);
+                        }}
+                        className="rounded px-1.5 py-0.5 border border-indigo-200 bg-indigo-50 font-semibold text-indigo-700 hover:bg-indigo-100"
+                      >
+                        Auto ({autoDistance.toFixed(1)}km)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Latitude" htmlFor="latitude">
+                    <Input
+                      id="latitude"
+                      type="number"
+                      step="0.00001"
+                      min={-90}
+                      max={90}
+                      value={latitude}
+                      onChange={(event) => setLatitude(Number(event.target.value))}
+                    />
+                  </FormField>
+                  <FormField label="Longitude" htmlFor="longitude">
+                    <Input
+                      id="longitude"
+                      type="number"
+                      step="0.00001"
+                      min={-180}
+                      max={180}
+                      value={longitude}
+                      onChange={(event) => setLongitude(Number(event.target.value))}
+                    />
+                  </FormField>
+                </div>
+              )}
+
+              {/* Environmental & Road Parameters */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Road type" htmlFor="road-type" required>
                   <Select
@@ -322,18 +493,15 @@ export function PredictPage() {
                     ))}
                   </Select>
                 </FormField>
-                <FormField label="Speed limit (mph)" htmlFor="speed-limit" required>
+                <FormField label="Speed limit (mph / kmph equiv)" htmlFor="speed-limit" required>
                   <Select
                     id="speed-limit"
                     value={speedLimit}
                     onChange={(event) => setSpeedLimit(Number(event.target.value))}
                   >
-                    {(metadata?.ranges?.speed_limit
-                      ? [20, 30, 40, 50, 60, 70]
-                      : [20, 30, 40, 50, 60, 70]
-                    ).map((option: number) => (
+                    {[20, 30, 40, 50, 60, 70].map((option: number) => (
                       <option key={option} value={option}>
-                        {option}
+                        {option} {option <= 30 ? "(Urban/Town)" : option <= 50 ? "(State Road)" : "(National Highway)"}
                       </option>
                     ))}
                   </Select>
@@ -367,30 +535,45 @@ export function PredictPage() {
                 size="lg"
               >
                 <Sparkles className="h-4 w-4" />
-                Predict severity
+                {mode === "route" ? "Analyze Road Corridor & Predict Risk" : "Predict Severity"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
-
-              {!user ? (
-                <p className="text-center text-[11px] leading-relaxed text-slate-500">
-                  Guests can run predictions.{" "}
-                  <Link to="/login" className="font-semibold text-ink-600 hover:text-ink-900">
-                    Sign in
-                  </Link>{" "}
-                  to save history and link results to your profile.
-                </p>
-              ) : null}
             </div>
           </CardContent>
         </Card>
 
+        {/* Results Pane */}
         <div className="space-y-6">
           {result ? (
             <>
+              {/* Route Summary Banner if in route mode */}
+              {mode === "route" ? (
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 shadow-xs">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-900">
+                    <Navigation className="h-4 w-4 text-indigo-600" />
+                    Corridor Journey Assessment
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700">
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-500 block">From (Start):</span>
+                      <strong className="text-slate-900">{originName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-500 block">To (Destination):</span>
+                      <strong className="text-slate-900">{destName}</strong>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-center justify-between border-t border-indigo-100 pt-2 text-xs">
+                    <span className="text-slate-600">Corridor Length:</span>
+                    <strong className="font-mono text-indigo-700 font-bold">{selectedDistance.toFixed(2)} km</strong>
+                  </div>
+                </div>
+              ) : null}
+
               <Card>
                 <CardHeader
-                  title="Severity outcome"
-                  description="Predicted class and probability distribution."
+                  title={mode === "route" ? "Corridor Severity Outcome" : "Severity Outcome"}
+                  description="Predicted accident severity and probability distribution."
                 />
                 <CardContent>
                   <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
@@ -401,10 +584,10 @@ export function PredictPage() {
                           className={cn(
                             "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
                             result.predicted_severity === "Fatal"
-                              ? "bg-rose-50 text-rose-700"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
                               : result.predicted_severity === "Serious"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-emerald-50 text-emerald-700",
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "bg-emerald-50 text-emerald-700 border border-emerald-200",
                           )}
                         >
                           {result.predicted_severity}
@@ -414,8 +597,8 @@ export function PredictPage() {
                         </span>
                       </div>
                       <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                        Severe probability {formatPercent(result.severe_probability)} ·
-                        Fatal probability {formatPercent(result.fatal_probability)}
+                        Severe probability {formatPercent(result.severe_probability)} · Fatal probability{" "}
+                        {formatPercent(result.fatal_probability)}
                       </p>
                       <div className="mt-4">
                         <ProbabilityBars
@@ -430,8 +613,8 @@ export function PredictPage() {
 
               <Card>
                 <CardHeader
-                  title="Risk drivers"
-                  description="Derived factors that pushed the prediction toward a severe outcome."
+                  title="Corridor Risk Drivers"
+                  description="Active risk variables contributing to road danger."
                 />
                 <CardContent>
                   {activeRiskFactors.length ? (
@@ -448,7 +631,7 @@ export function PredictPage() {
                     </div>
                   ) : (
                     <p className="text-xs leading-relaxed text-slate-500">
-                      No strong risk drivers are active for this scenario.
+                      Standard operating conditions; no extreme risk multipliers triggered.
                     </p>
                   )}
                   {result.probability_note ? (
@@ -459,10 +642,11 @@ export function PredictPage() {
                 </CardContent>
               </Card>
 
+              {/* Nearby Hotspots */}
               <Card>
                 <CardHeader
-                  title="Nearby hotspots"
-                  description="Precomputed K-Means clusters within 50 km of the location."
+                  title="Nearby Collision Hotspots"
+                  description="High-frequency collision sites within range of this location."
                 />
                 <CardContent>
                   {result.nearby_hotspots.length ? (
@@ -480,13 +664,13 @@ export function PredictPage() {
                               {hotspot.label}
                             </p>
                             <p className="mt-0.5 text-[11px] text-slate-500">
-                              {formatNumber(hotspot.accident_count)} collisions ·{" "}
+                              {formatNumber(hotspot.accident_count)} historical collisions ·{" "}
                               {hotspot.distance_km.toFixed(1)} km away
                             </p>
                           </div>
                           <Link
-                            to={`/app/hotspots?focus=${hotspot.cluster_id}`}
-                            className="text-[11px] font-semibold text-ink-600 hover:text-ink-900"
+                            to={`/hotspots?focus=${hotspot.cluster_id}`}
+                            className="text-[11px] font-semibold text-brand-600 hover:text-brand-800"
                           >
                             View
                           </Link>
@@ -495,16 +679,17 @@ export function PredictPage() {
                     </div>
                   ) : (
                     <p className="text-xs leading-relaxed text-slate-500">
-                      No precomputed hotspots are within 50 km of this location.
+                      No high-risk cluster pins within 50 km. Road corridor behaves consistently with standard baseline.
                     </p>
                   )}
                 </CardContent>
               </Card>
 
+              {/* Safety Recommendations */}
               <Card>
                 <CardHeader
-                  title="Recommended actions"
-                  description="Interventions most relevant to the selected road type and weather."
+                  title="Safety Interventions & Recommendations"
+                  description="Targeted mitigations derived from safety evidence for this road stretch."
                 />
                 <CardContent>
                   {result.recommendations.length ? (
@@ -529,7 +714,7 @@ export function PredictPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500">No recommendations matched.</p>
+                    <p className="text-xs text-slate-500">No specific interventions matched.</p>
                   )}
                 </CardContent>
               </Card>
@@ -537,64 +722,29 @@ export function PredictPage() {
           ) : (
             <Card className="flex min-h-[420px] flex-col items-center justify-center p-8 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-signal-50 text-signal-600">
-                <Sparkles className="h-6 w-6" />
+                <RouteIcon className="h-6 w-6" />
               </div>
               <h3 className="mt-4 font-display text-lg font-bold text-slate-950">
-                Run your first scenario
+                Analyze Road Corridor
               </h3>
               <p className="mt-2 max-w-sm text-xs leading-relaxed text-slate-500">
-                Set the location and context on the left, then click predict. The
-                result will appear here with probabilities, risk drivers, nearby
-                hotspots and recommended actions.
+                Pick your Start location (Point A) and Destination (Point B) in <strong>Puttur City / Chittoor</strong>, adjust your journey distance and conditions, then click to evaluate route safety.
               </p>
               <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-400">
                 <span className="rounded-full border border-slate-200 px-2.5 py-1">
-                  105,982 training records
+                  Puttur City, AP
                 </span>
                 <span className="rounded-full border border-slate-200 px-2.5 py-1">
-                  Hierarchical RF
+                  Corridor Polyline
                 </span>
                 <span className="rounded-full border border-slate-200 px-2.5 py-1">
-                  79 hotspots
+                  Distance Calculation
                 </span>
               </div>
             </Card>
           )}
         </div>
       </div>
-
-      {result ? (
-        <Card>
-          <CardHeader
-            title="Model transparency"
-            description="Details about the model that produced this prediction."
-          />
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                ["Model", result.model.name],
-                ["Version", result.model.version],
-                ["Kind", result.model.kind],
-                ["Fatal threshold", String(result.model.decision_rule.fatal_threshold ?? "—")],
-                ["Serious weight", String(result.model.decision_rule.serious_weight ?? "—")],
-                ["Severe probability", formatPercent(result.severe_probability)],
-                ["Confidence", formatPercent(result.confidence)],
-                ["Generated", new Date(result.generated_at).toLocaleString("en-GB")],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="rounded-xl border border-slate-100 bg-slate-50/60 p-3"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                    {label}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-900">{value}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }

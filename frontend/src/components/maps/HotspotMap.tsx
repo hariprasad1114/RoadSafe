@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -8,7 +8,7 @@ import {
   useMap,
 } from "react-leaflet";
 import type { Hotspot } from "@/types";
-import { UK_CENTER } from "@/lib/constants";
+import { PUTTUR_CHITTOOR_CENTER, UK_CENTER } from "@/lib/constants";
 import { cn, formatNumber, formatPercent, riskTone } from "@/lib/utils";
 
 interface HotspotMapProps {
@@ -43,15 +43,25 @@ function MapFocus({ cluster }: { cluster: Hotspot | null }) {
   return null;
 }
 
+function MapRegionJumper({ target }: { target: [number, number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!target) return;
+    map.flyTo([target[0], target[1]], target[2], { duration: 0.8 });
+  }, [target, map]);
+  return null;
+}
+
 export function HotspotMap({
   clusters,
   selectedKey,
   onSelect,
   height = 480,
-  center = UK_CENTER,
-  zoom = 6,
+  center = PUTTUR_CHITTOOR_CENTER,
+  zoom = 11,
   className,
 }: HotspotMapProps) {
+  const [jumpTarget, setJumpTarget] = useState<[number, number, number] | null>(null);
   const selected =
     clusters.find(
       (cluster) => `${cluster.algorithm}-${cluster.cluster_id}` === selectedKey,
@@ -144,7 +154,27 @@ export function HotspotMap({
           );
         })}
         <MapFocus cluster={selected} />
+        <MapRegionJumper target={jumpTarget} />
       </MapContainer>
+
+      {/* Region Switcher Overlay (Top Right) */}
+      <div className="absolute top-3 right-3 z-[400] flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+        <button
+          type="button"
+          onClick={() => setJumpTarget([13.4428, 79.5544, 12])}
+          className="rounded px-2 py-1 text-[10px] font-semibold text-brand-700 hover:bg-brand-50 transition"
+        >
+          📍 Puttur & Chittoor (AP)
+        </button>
+        <span className="text-slate-300">|</span>
+        <button
+          type="button"
+          onClick={() => setJumpTarget([54.2, -2.6, 6])}
+          className="rounded px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-100 transition"
+        >
+          UK Overview
+        </button>
+      </div>
 
       <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-card backdrop-blur">
         <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">

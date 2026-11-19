@@ -14,8 +14,8 @@ const pageIsLocalhost =
 export const API_URL = pageIsLocalhost
   ? configuredBaseUrl || "http://localhost:8000"
   : (configuredBaseUrl && !localhostPattern.test(configuredBaseUrl)
-      ? configuredBaseUrl
-      : DEFAULT_PROD_API_URL);
+    ? configuredBaseUrl
+    : DEFAULT_PROD_API_URL);
 
 export class ApiError extends Error {
   status: number;

@@ -128,10 +128,17 @@ class ModelService:
     def public_metadata(self) -> dict:
         metadata = self.metadata()
         metrics = self.metrics()
-        bounds = metadata.get("bounds", {})
+        bounds = {
+            "min_latitude": -90.0,
+            "max_latitude": 90.0,
+            "min_longitude": -180.0,
+            "max_longitude": 180.0,
+            "center_latitude": 13.4428,
+            "center_longitude": 79.5544,
+        }
         defaults = {
-            "latitude": bounds.get("center_latitude", 52.5),
-            "longitude": bounds.get("center_longitude", -1.5),
+            "latitude": 13.4428,
+            "longitude": 79.5544,
             "road_type": "Urban Road",
             "weather": "Clear",
             "road_condition": "Dry",
@@ -192,21 +199,12 @@ class ModelService:
             allowed = categories.get(field)
             if allowed and data[field] not in allowed:
                 raise PredictionValidationError(field, data[field], allowed)
-        bounds = metadata.get("bounds", {})
         latitude = float(data["latitude"])
         longitude = float(data["longitude"])
-        latitude_bounds = (
-            float(bounds.get("min_latitude", -90)),
-            float(bounds.get("max_latitude", 90)),
-        )
-        longitude_bounds = (
-            float(bounds.get("min_longitude", -180)),
-            float(bounds.get("max_longitude", 180)),
-        )
-        if not (latitude_bounds[0] <= latitude <= latitude_bounds[1]):
-            raise PredictionValidationError("latitude", latitude, bounds=latitude_bounds)
-        if not (longitude_bounds[0] <= longitude <= longitude_bounds[1]):
-            raise PredictionValidationError("longitude", longitude, bounds=longitude_bounds)
+        if not (-90.0 <= latitude <= 90.0):
+            raise PredictionValidationError("latitude", latitude, bounds=(-90.0, 90.0))
+        if not (-180.0 <= longitude <= 180.0):
+            raise PredictionValidationError("longitude", longitude, bounds=(-180.0, 180.0))
         speed = float(data["speed_limit"])
         if speed < 0 or speed > 100:
             raise PredictionValidationError("speed_limit", speed)

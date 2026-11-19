@@ -7,6 +7,10 @@ import numpy as np
 EARTH_RADIUS_KM = 6371.0088
 
 CITIES = [
+    ("Puttur (Andhra Pradesh)", 13.4428, 79.5544),
+    ("Chittoor (Andhra Pradesh)", 13.2172, 79.1003),
+    ("Tirupati (Andhra Pradesh)", 13.6288, 79.4192),
+    ("Nagari (Andhra Pradesh)", 13.3300, 79.5850),
     ("London", 51.5074, -0.1278),
     ("Birmingham", 52.4862, -1.8904),
     ("Manchester", 53.4808, -2.2426),

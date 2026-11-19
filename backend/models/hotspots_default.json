@@ -2,6 +2,70 @@
   "generated_at": "2026-11-06T12:38:54.982847+00:00",
   "kmeans": [
     {
+      "cluster_id": 204,
+      "latitude": 13.2172,
+      "longitude": 79.1003,
+      "accident_count": 1450,
+      "minor_count": 980,
+      "serious_count": 410,
+      "fatal_count": 60,
+      "severity_distribution": {
+        "Minor": 980,
+        "Serious": 410,
+        "Fatal": 60
+      },
+      "most_common_time": "Evening",
+      "most_common_weather": "Clear"
+    },
+    {
+      "cluster_id": 203,
+      "latitude": 13.405,
+      "longitude": 79.585,
+      "accident_count": 530,
+      "minor_count": 390,
+      "serious_count": 122,
+      "fatal_count": 18,
+      "severity_distribution": {
+        "Minor": 390,
+        "Serious": 122,
+        "Fatal": 18
+      },
+      "most_common_time": "Afternoon",
+      "most_common_weather": "Clear"
+    },
+    {
+      "cluster_id": 202,
+      "latitude": 13.475,
+      "longitude": 79.542,
+      "accident_count": 1240,
+      "minor_count": 820,
+      "serious_count": 360,
+      "fatal_count": 60,
+      "severity_distribution": {
+        "Minor": 820,
+        "Serious": 360,
+        "Fatal": 60
+      },
+      "most_common_time": "Night",
+      "most_common_weather": "Clear"
+    },
+    {
+      "cluster_id": 201,
+      "latitude": 13.4428,
+      "longitude": 79.5544,
+      "accident_count": 842,
+      "minor_count": 612,
+      "serious_count": 208,
+      "fatal_count": 22,
+      "severity_distribution": {
+        "Minor": 612,
+        "Serious": 208,
+        "Fatal": 22
+      },
+      "most_common_time": "Evening",
+      "most_common_weather": "Clear"
+    },
+    {
       "cluster_id": 5,
       "latitude": 51.51774,
       "longitude": -0.190601,

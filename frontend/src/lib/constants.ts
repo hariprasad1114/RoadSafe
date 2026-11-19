@@ -6,7 +6,101 @@ export const DATASET_ROWS = 105982;
 
 export const DATASET_LABEL = "UK DfT 2022 collisions";
 
-export const UK_CENTER: [number, number] = [54.2, -2.6];
+export const UK_CENTER: [number, number] = [13.4428, 79.5544]; // Default to Puttur, Chittoor, Andhra Pradesh
+
+export const PUTTUR_CHITTOOR_CENTER: [number, number] = [13.4428, 79.5544];
+
+export interface LocationPreset {
+  id: string;
+  name: string;
+  shortName: string;
+  category: "Urban" | "Highway" | "Intersection" | "Rural";
+  latitude: number;
+  longitude: number;
+  description: string;
+  defaultSpeedLimit: number;
+  roadType: "Urban Road" | "Highway" | "Intersection" | "Rural Road";
+}
+
+export const PUTTUR_LOCATIONS: LocationPreset[] = [
+  {
+    id: "puttur-town",
+    name: "Puttur Town Center (Bus Station & Market)",
+    shortName: "Puttur Town",
+    category: "Urban",
+    latitude: 13.4428,
+    longitude: 79.5544,
+    description: "Commercial heart of Puttur with dense pedestrian, two-wheeler and auto traffic.",
+    defaultSpeedLimit: 30,
+    roadType: "Urban Road",
+  },
+  {
+    id: "puttur-station",
+    name: "Puttur Railway Station Junction",
+    shortName: "Railway Junction",
+    category: "Intersection",
+    latitude: 13.4395,
+    longitude: 79.5582,
+    description: "Busy railway approach intersection with high cross-traffic and pedestrian activity.",
+    defaultSpeedLimit: 30,
+    roadType: "Intersection",
+  },
+  {
+    id: "puttur-tirupati-nh716",
+    name: "Puttur - Tirupati Road (NH 716 Corridor)",
+    shortName: "Tirupati Road (NH 716)",
+    category: "Highway",
+    latitude: 13.4750,
+    longitude: 79.5420,
+    description: "High-speed national highway carrying pilgrimage buses, heavy freight, and private vehicles.",
+    defaultSpeedLimit: 70,
+    roadType: "Highway",
+  },
+  {
+    id: "puttur-nagari-road",
+    name: "Puttur - Nagari Road (SH 61)",
+    shortName: "Nagari Road",
+    category: "Rural",
+    latitude: 13.4050,
+    longitude: 79.5850,
+    description: "Inter-district connecting corridor featuring curves, bridges, and mixed agricultural traffic.",
+    defaultSpeedLimit: 50,
+    roadType: "Rural Road",
+  },
+  {
+    id: "puttur-chittoor-road",
+    name: "Puttur - Chittoor Road (District Highway)",
+    shortName: "Chittoor Highway",
+    category: "Rural",
+    latitude: 13.3850,
+    longitude: 79.4620,
+    description: "Arterial link connecting Puttur to Chittoor town with fast-moving regional commuter traffic.",
+    defaultSpeedLimit: 60,
+    roadType: "Rural Road",
+  },
+  {
+    id: "chittoor-city",
+    name: "Chittoor City Collectorate Junction",
+    shortName: "Chittoor City",
+    category: "Urban",
+    latitude: 13.2172,
+    longitude: 79.1003,
+    description: "District headquarters commercial junction with complex vehicular and pedestrian movement.",
+    defaultSpeedLimit: 40,
+    roadType: "Intersection",
+  },
+  {
+    id: "tirupati-highway",
+    name: "Tirupati Highway Gateway (Bypass / Alipiri)",
+    shortName: "Tirupati Gateway",
+    category: "Highway",
+    latitude: 13.6288,
+    longitude: 79.4192,
+    description: "Major junction point for buses and long-distance passenger travel towards Tirupati.",
+    defaultSpeedLimit: 60,
+    roadType: "Highway",
+  },
+];
 
 export const UK_BOUNDS: [[number, number], [number, number]] = [
   [49.5, -8.5],
