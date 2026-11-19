@@ -1,5 +1,7 @@
 import { getAccessToken } from "@/lib/insforge";
 
+const DEFAULT_PROD_API_URL = "https://roadsafe-api-b867ea26-fd8d-4657-a03e-1453777a44d5.fly.dev";
+
 const configuredBaseUrl = (import.meta.env.VITE_API_URL || "")
   .trim()
   .replace(/\/+$/, "");
@@ -9,13 +11,11 @@ const pageIsLocalhost =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
 
-// A localhost URL on a deployed site points at the visitor's own machine, so
-// fall back to same-origin requests. Vercel rewrites /api/* to the deployed API
-// (see vercel.json). Locally, keep talking to the FastAPI dev server.
-export const API_URL =
-  localhostPattern.test(configuredBaseUrl) && !pageIsLocalhost
-    ? ""
-    : configuredBaseUrl || (pageIsLocalhost ? "http://localhost:8000" : "");
+export const API_URL = pageIsLocalhost
+  ? configuredBaseUrl || "http://localhost:8000"
+  : (configuredBaseUrl && !localhostPattern.test(configuredBaseUrl)
+      ? configuredBaseUrl
+      : DEFAULT_PROD_API_URL);
 
 export class ApiError extends Error {
   status: number;
