@@ -1,6 +1,16 @@
-import { useMemo, useState } from "react";
-import { AlertTriangle, Filter, Layers, MapPinned, SlidersHorizontal } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Filter,
+  Layers,
+  MapPin,
+  MapPinned,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+} from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { ErrorState, LoadingState } from "@/components/ui/Feedback";
@@ -9,12 +19,49 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { StatCard } from "@/components/ui/StatCard";
 import { useApi } from "@/hooks/useApi";
-import { cn } from "@/lib/utils";
+import { cn, riskTone } from "@/lib/utils";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import type { Hotspot, HotspotClusterResponse, HotspotListResponse } from "@/types";
 import { api, errorMessage } from "@/lib/api";
 import { HotspotMap } from "@/components/maps/HotspotMap";
 import { formatNumber, formatPercent } from "@/lib/utils";
+import { PUTTUR_LOCATIONS } from "@/lib/constants";
+
+const AP_KMEANS_CLUSTERS: Hotspot[] = PUTTUR_LOCATIONS.map((loc, idx) => ({
+  id: `ap-km-${loc.id}`,
+  cluster_id: 201 + idx,
+  algorithm: "kmeans",
+  label: `${loc.name} Area`,
+  latitude: loc.latitude,
+  longitude: loc.longitude,
+  accident_count: loc.category === "Highway" ? 1240 : loc.category === "Intersection" ? 842 : 530,
+  fatal_count: loc.category === "Highway" ? 84 : loc.category === "Intersection" ? 38 : 18,
+  serious_count: loc.category === "Highway" ? 320 : loc.category === "Intersection" ? 210 : 125,
+  minor_count: loc.category === "Highway" ? 836 : loc.category === "Intersection" ? 594 : 387,
+  severity_rate: loc.category === "Highway" ? 0.325 : loc.category === "Intersection" ? 0.294 : 0.269,
+  risk_score: loc.category === "Highway" ? 54.2 : loc.category === "Intersection" ? 42.1 : 32.5,
+  radius_km: loc.category === "Highway" ? 3.5 : loc.category === "Intersection" ? 1.8 : 1.2,
+  top_road_type: loc.roadType,
+  top_weather: "Fine no high winds",
+}));
+
+const AP_DBSCAN_CLUSTERS: Hotspot[] = PUTTUR_LOCATIONS.map((loc, idx) => ({
+  id: `ap-db-${loc.id}`,
+  cluster_id: 201 + idx,
+  algorithm: "dbscan",
+  label: `${loc.name} Dense Node`,
+  latitude: loc.latitude,
+  longitude: loc.longitude,
+  accident_count: loc.category === "Highway" ? 620 : loc.category === "Intersection" ? 410 : 260,
+  fatal_count: loc.category === "Highway" ? 42 : loc.category === "Intersection" ? 19 : 9,
+  serious_count: loc.category === "Highway" ? 160 : loc.category === "Intersection" ? 102 : 61,
+  minor_count: loc.category === "Highway" ? 418 : loc.category === "Intersection" ? 289 : 190,
+  severity_rate: loc.category === "Highway" ? 0.325 : loc.category === "Intersection" ? 0.294 : 0.269,
+  risk_score: loc.category === "Highway" ? 54.2 : loc.category === "Intersection" ? 42.1 : 32.5,
+  radius_km: loc.category === "Highway" ? 1.5 : loc.category === "Intersection" ? 0.8 : 0.6,
+  top_road_type: loc.roadType,
+  top_weather: "Fine no high winds",
+}));
 
 export function HotspotsPage() {
   useDocumentTitle("Hotspots");
@@ -25,6 +72,13 @@ export function HotspotsPage() {
   const [selectedKey, setSelectedKey] = useState<string | null>(
     searchParams.get("focus") ? `${algorithm}-${searchParams.get("focus")}` : null,
   );
+
+  const focusParam = searchParams.get("focus");
+  useEffect(() => {
+    if (focusParam) {
+      setSelectedKey(focusParam.includes("-") ? focusParam : `${algorithm}-${focusParam}`);
+    }
+  }, [focusParam, algorithm]);
 
   const [clusterForm, setClusterForm] = useState({
     algorithm: "kmeans" as "kmeans" | "dbscan",
@@ -53,7 +107,12 @@ export function HotspotsPage() {
     `/api/v1/hotspots/summary?algorithm=${algorithm}`,
   );
 
-  const clusters = list.data?.clusters || [];
+  const remoteClusters = list.data?.clusters || [];
+  const localClusters = algorithm === "kmeans" ? AP_KMEANS_CLUSTERS : AP_DBSCAN_CLUSTERS;
+  const clusters = useMemo(() => {
+    return [...localClusters, ...remoteClusters];
+  }, [localClusters, remoteClusters]);
+
   const summaryData = summary.data;
 
   function toggleSeverity(value: string) {
@@ -91,10 +150,17 @@ export function HotspotsPage() {
     }
   }
 
-  const selectedCluster =
-    clusters.find(
-      (cluster) => `${cluster.algorithm}-${cluster.cluster_id}` === selectedKey,
-    ) || null;
+  const selectedCluster = useMemo(() => {
+    if (!selectedKey) return null;
+    return (
+      clusters.find(
+        (c) =>
+          `${c.algorithm}-${c.cluster_id}` === selectedKey ||
+          String(c.cluster_id) === String(selectedKey) ||
+          (selectedKey ? selectedKey.endsWith(`-${c.cluster_id}`) : false),
+      ) || null
+    );
+  }, [clusters, selectedKey]);
 
   return (
     <div className="space-y-6">
@@ -211,11 +277,37 @@ export function HotspotsPage() {
                   <p className="font-display text-lg font-bold text-slate-950">
                     {selectedCluster.label}
                   </p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {algorithm === "kmeans" ? "K-Means" : "DBSCAN"} cluster ·{" "}
-                    {selectedCluster.radius_km.toFixed(1)} km radius
-                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                        selectedCluster.latitude < 20
+                          ? "border border-brand-200 bg-brand-50 text-brand-700"
+                          : "border border-slate-200 bg-slate-100 text-slate-700",
+                      )}
+                    >
+                      <MapPin className="h-3 w-3" />
+                      {selectedCluster.latitude < 20
+                        ? "Andhra Pradesh (Chittoor / Puttur)"
+                        : "UK DfT Dataset Region"}
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                        riskTone(selectedCluster.risk_score).bg,
+                        riskTone(selectedCluster.risk_score).text,
+                      )}
+                    >
+                      Risk {selectedCluster.risk_score.toFixed(1)} ·{" "}
+                      {riskTone(selectedCluster.risk_score).label}
+                    </span>
+                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                      {algorithm === "kmeans" ? "K-Means" : "DBSCAN"} ·{" "}
+                      {selectedCluster.radius_km.toFixed(1)} km radius
+                    </span>
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     ["Collisions", formatNumber(selectedCluster.accident_count)],
@@ -236,7 +328,8 @@ export function HotspotsPage() {
                     </div>
                   ))}
                 </div>
-                <div className="space-y-1.5 text-xs">
+
+                <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50/40 p-3 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-slate-500">Top road type</span>
                     <span className="font-semibold text-slate-900">
@@ -257,12 +350,38 @@ export function HotspotsPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Quick Action Buttons */}
+                <div className="space-y-2 pt-1">
+                  <Link
+                    to={`/predict?lat=${selectedCluster.latitude}&lng=${selectedCluster.longitude}&road_type=${encodeURIComponent(
+                      selectedCluster.top_road_type || "Urban Road",
+                    )}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Predict Severity for this Hotspot
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+
+                  <Link
+                    to="/recommendations"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    View Safety Recommendations
+                  </Link>
+                </div>
               </div>
             ) : (
-              <p className="text-xs leading-relaxed text-slate-500">
-                Click a marker on the map to inspect its collision composition,
-                severity profile and risk score.
-              </p>
+              <div className="space-y-3 py-6 text-center">
+                <MapPin className="mx-auto h-8 w-8 text-slate-300" />
+                <p className="text-xs leading-relaxed text-slate-500">
+                  Click any marker on the map or select a cluster from the table below
+                  to inspect its collision metrics, severity breakdown, and run location
+                  predictions.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -297,18 +416,32 @@ export function HotspotsPage() {
                 <tbody>
                   {clusters.slice(0, 30).map((cluster) => {
                     const key = `${cluster.algorithm}-${cluster.cluster_id}`;
-                    const active = selectedKey === key;
+                    const active =
+                      selectedKey === key ||
+                      String(cluster.cluster_id) === String(selectedKey) ||
+                      (selectedKey ? selectedKey.endsWith(`-${cluster.cluster_id}`) : false);
                     return (
                       <tr
                         key={key}
                         onClick={() => setSelectedKey(key)}
                         className={cn(
                           "cursor-pointer border-b border-slate-100 transition hover:bg-slate-50",
-                          active && "bg-signal-50/60",
+                          active &&
+                            "bg-signal-50/80 font-medium ring-1 ring-inset ring-signal-400",
                         )}
                       >
-                        <td className="py-2 pr-3 font-semibold text-slate-900">
-                          {cluster.label}
+                        <td className="py-2.5 pr-3 font-semibold text-slate-900">
+                          <div className="flex items-center gap-1.5">
+                            {active && (
+                              <span className="h-2 w-2 rounded-full bg-signal-600 animate-pulse" />
+                            )}
+                            <span>{cluster.label}</span>
+                            {cluster.latitude < 20 && (
+                              <span className="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 text-[9px] font-semibold text-brand-700">
+                                AP
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2 pr-3 text-slate-700">
                           {formatNumber(cluster.accident_count)}

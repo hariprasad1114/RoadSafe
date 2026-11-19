@@ -36,8 +36,8 @@ function MapFocus({ cluster }: { cluster: Hotspot | null }) {
   const map = useMap();
   useEffect(() => {
     if (!cluster) return;
-    map.flyTo([cluster.latitude, cluster.longitude], Math.max(map.getZoom(), 8), {
-      duration: 0.7,
+    map.flyTo([cluster.latitude, cluster.longitude], Math.max(map.getZoom(), 13), {
+      duration: 0.8,
     });
   }, [cluster, map]);
   return null;
@@ -64,7 +64,10 @@ export function HotspotMap({
   const [jumpTarget, setJumpTarget] = useState<[number, number, number] | null>(null);
   const selected =
     clusters.find(
-      (cluster) => `${cluster.algorithm}-${cluster.cluster_id}` === selectedKey,
+      (cluster) =>
+        `${cluster.algorithm}-${cluster.cluster_id}` === selectedKey ||
+        String(cluster.cluster_id) === String(selectedKey) ||
+        (selectedKey ? selectedKey.endsWith(`-${cluster.cluster_id}`) : false),
     ) || null;
 
   return (
@@ -88,7 +91,10 @@ export function HotspotMap({
         />
         {clusters.map((cluster) => {
           const key = `${cluster.algorithm}-${cluster.cluster_id}`;
-          const active = selectedKey === key;
+          const active =
+            selectedKey === key ||
+            String(cluster.cluster_id) === String(selectedKey) ||
+            (selectedKey ? selectedKey.endsWith(`-${cluster.cluster_id}`) : false);
           const color = markerColor(cluster.risk_score);
           return (
             <CircleMarker

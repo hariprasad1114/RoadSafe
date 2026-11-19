@@ -11,7 +11,7 @@ import {
   Route as RouteIcon,
   Sparkles,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -48,6 +48,7 @@ export function PredictPage() {
   useDocumentTitle("Predict severity & Route Corridor Risk");
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const { data: metadata } = useApi<Metadata>("/api/v1/metadata");
   const categories = metadata?.categories;
@@ -65,6 +66,22 @@ export function PredictPage() {
   const [destLatitude, setDestLatitude] = useState(13.4750);
   const [destLongitude, setDestLongitude] = useState(79.5420);
   const [destPresetId, setDestPresetId] = useState<string>("puttur-tirupati-nh716");
+
+  // Read URL query parameters if navigating from Hotspot click
+  useEffect(() => {
+    const latParam = searchParams.get("lat");
+    const lngParam = searchParams.get("lng");
+    const roadTypeParam = searchParams.get("road_type");
+    if (latParam && Number.isFinite(Number(latParam))) {
+      setLatitude(Number(latParam));
+    }
+    if (lngParam && Number.isFinite(Number(lngParam))) {
+      setLongitude(Number(lngParam));
+    }
+    if (roadTypeParam) {
+      setRoadType(roadTypeParam);
+    }
+  }, [searchParams]);
 
   // Distance selection (in km)
   const autoDistance = useMemo(() => {
@@ -703,9 +720,10 @@ export function PredictPage() {
                           </div>
                           <Link
                             to={`/hotspots?focus=${hotspot.cluster_id}`}
-                            className="text-[11px] font-semibold text-brand-600 hover:text-brand-800"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-brand-600 shadow-2xs transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                           >
-                            View
+                            <span>View hotspot</span>
+                            <ArrowRight className="h-3 w-3" />
                           </Link>
                         </div>
                       ))}
